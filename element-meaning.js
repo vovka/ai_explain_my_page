@@ -242,18 +242,37 @@
 
     var response;
     try {
-      var fetchPromise = (typeof fetch === 'function')
-        ? fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(body) })
-        : null;
-      if (!fetchPromise) {
+      if (typeof fetch !== 'function') {
         return { ok: false, code: ERRORS.NETWORK_ERROR, message: 'fetch is not available in this environment.' };
       }
-      response = await (timeoutMs > 0 ? Promise.race([
-        fetchPromise,
-        new Promise(function(_resolve, reject) { setTimeout(function() { reject({ timeout: true }); }, timeoutMs); })
-      ]) : fetchPromise);
+
+      var controller = (typeof AbortController !== 'undefined' && timeoutMs > 0) ? new AbortController() : null;
+      var timeoutId = null;
+
+      if (controller) {
+        timeoutId = setTimeout(function() {
+          try { controller.abort(); } catch (_e) {}
+        }, timeoutMs);
+
+        response = await fetch(url, {
+          method: 'POST',
+          headers: headers,
+          body: JSON.stringify(body),
+          signal: controller.signal
+        });
+
+        if (timeoutId) clearTimeout(timeoutId);
+      } else if (timeoutMs > 0) {
+        var fetchPromise = fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(body) });
+        response = await Promise.race([
+          fetchPromise,
+          new Promise(function(_resolve, reject) { setTimeout(function() { reject({ timeout: true }); }, timeoutMs); })
+        ]);
+      } else {
+        response = await fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(body) });
+      }
     } catch (err) {
-      if (err && err.timeout) {
+      if (err && (err.name === 'AbortError' || err.timeout)) {
         return { ok: false, code: ERRORS.NETWORK_ERROR, message: 'Request timed out.' };
       }
       return { ok: false, code: ERRORS.NETWORK_ERROR, message: 'Network error.', error: err };
