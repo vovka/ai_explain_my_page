@@ -158,6 +158,11 @@
       UNKNOWN: 'UNKNOWN'
     };
 
+    // Named constants for readability
+    var TEXT_CONTENT_LIMIT = 4000;
+    var OUTER_HTML_LIMIT = 100000;
+    var DEFAULT_TIMEOUT_MS = 30000;
+
     function isDomElement(value) {
       if (!value) return false;
       return typeof value === 'object' && (
@@ -197,8 +202,8 @@
           title: el.getAttribute ? safeString(el.getAttribute('title')) : '',
           href: el.getAttribute ? safeString(el.getAttribute('href')) : '',
           src: el.getAttribute ? safeString(el.getAttribute('src')) : '',
-          text: safeString(el.textContent).trim().slice(0, 4000),
-          outerHTML: safeString(el.outerHTML).slice(0, 100000),
+          text: safeString(el.textContent).trim().slice(0, TEXT_CONTENT_LIMIT),
+          outerHTML: safeString(el.outerHTML).slice(0, OUTER_HTML_LIMIT),
           attributes: attributes
         };
       }
@@ -216,8 +221,8 @@
         title: safeString(info.title),
         href: safeString(info.href),
         src: safeString(info.src),
-        text: safeString(info.text).slice(0, 4000),
-        outerHTML: safeString(info.outerHTML).slice(0, 100000),
+        text: safeString(info.text).slice(0, TEXT_CONTENT_LIMIT),
+        outerHTML: safeString(info.outerHTML).slice(0, OUTER_HTML_LIMIT),
         selector: safeString(info.selector),
         attributes: info.attributes && typeof info.attributes === 'object' ? info.attributes : {}
       };
@@ -331,7 +336,7 @@
       var elementInfo = params.elementInfo || null;
       var extraContext = params.extraContext || null;
       var generationConfig = params.generationConfig || null;
-      var timeoutMs = typeof params.timeoutMs === 'number' ? params.timeoutMs : 30000;
+      var timeoutMs = typeof params.timeoutMs === 'number' ? params.timeoutMs : DEFAULT_TIMEOUT_MS;
 
       if (!apiKey || typeof apiKey !== 'string' || apiKey.trim() === '') {
         return { ok: false, code: ERRORS.MISSING_API_KEY, message: 'API key is required.' };
@@ -417,7 +422,7 @@
     return {
       analyze: callGemini,
       errors: ERRORS,
-      constants: { DEFAULT_MODEL: DEFAULT_MODEL }
+      constants: { DEFAULT_MODEL: DEFAULT_MODEL, TEXT_CONTENT_LIMIT: TEXT_CONTENT_LIMIT, OUTER_HTML_LIMIT: OUTER_HTML_LIMIT, DEFAULT_TIMEOUT_MS: DEFAULT_TIMEOUT_MS }
     };
   });
 
@@ -425,12 +430,15 @@
   (function(root) {
     if (root.ElementInspector) return;
 
+    // Default timeout for inspector operations
+    var DEFAULT_TIMEOUT_MS = (root.ElementMeaning && root.ElementMeaning.constants && root.ElementMeaning.constants.DEFAULT_TIMEOUT_MS) || 30000;
+
     var defaults = {
       apiKey: '',
       model: (root.ElementMeaning && root.ElementMeaning.constants && root.ElementMeaning.constants.DEFAULT_MODEL) || 'gemini-2.5-flash-lite',
       applicationDescription: '',
       generationConfig: null,
-      timeoutMs: 30000
+      timeoutMs: DEFAULT_TIMEOUT_MS
     };
 
     function configure(options) {
