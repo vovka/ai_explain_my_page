@@ -10,6 +10,10 @@
 		.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
 		.card { border: 1px solid #ddd; padding: 12px; border-radius: 6px; }
 		.card a { color: #0a58ca; text-decoration: underline; }
+
+		/* Cursors for capture states */
+		.cursor-help-active, .cursor-help-active * { cursor: help !important; }
+		.cursor-wait-active, .cursor-wait-active * { cursor: wait !important; }
 	</style>
 </head>
 <body>
@@ -80,7 +84,22 @@
 					return;
 				}
 
-				window.ElementInspector.captureAndExplain().then(function(out) {
+				document.documentElement.classList.add('cursor-help-active');
+
+				var options = {
+					onExplanationStart: function(element) {
+						console.log('onExplanationStart triggered for element:', element);
+						document.documentElement.classList.remove('cursor-help-active');
+						document.documentElement.classList.add('cursor-wait-active');
+					},
+					onExplanationEnd: function() {
+						console.log('onExplanationEnd triggered');
+						document.documentElement.classList.remove('cursor-wait-active');
+						document.documentElement.classList.remove('cursor-help-active');
+					}
+				};
+
+				window.ElementInspector.captureAndExplain(options).then(function(out) {
 					console.log('Captured element:', out.element);
 					console.log('Event type:', out.eventType);
 					if (out.result && out.result.ok) {
@@ -90,6 +109,9 @@
 					}
 				}).catch(function(err) {
 					console.warn('Capture or explanation error:', err && err.message);
+				}).finally(function() {
+					// Final cleanup just in case, though onExplanationEnd should handle it
+					if (options.onExplanationEnd) options.onExplanationEnd();
 				});
 			});
 

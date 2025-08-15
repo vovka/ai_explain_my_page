@@ -83,7 +83,9 @@ The demo logs both the captured element and the explanation to the browser conso
 - `ElementInspector.defaults: Defaults` — current default configuration
 - `ElementInspector.version: string`
 
-Where `overrides` may include: `apiKey`, `model`, `applicationDescription`, `pageHtml`, `generationConfig`, `timeoutMs`, `extraContext`.
+Where `overrides` may include: `apiKey`, `model`, `applicationDescription`, `pageHtml`, `generationConfig`, `timeoutMs`, `extraContext`, and the following callbacks:
+  - `onExplanationStart?: (element: Element) => void` — callback fired right after element capture, before the explanation API call. Ideal for showing a loading state.
+  - `onExplanationEnd?: () => void` — callback fired after the explanation API call completes (on both success and failure). Ideal for hiding a loading state.
 
 ### ElementCapture (low-level)
 - `ElementCapture.start(): Promise<{ element: Element, eventType: string }>`
