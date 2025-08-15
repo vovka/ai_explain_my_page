@@ -495,9 +495,29 @@
     }
 
     async function captureAndExplain(overrides) {
+      overrides = overrides || {};
       var cap = await captureOnce();
-      var res = await explainElement(cap.element, overrides);
-      return { element: cap.element, eventType: cap.eventType, result: res };
+
+      if (typeof overrides.onExplanationStart === 'function') {
+        try {
+          overrides.onExplanationStart(cap.element);
+        } catch (e) {
+          console.error('[ElementInspector] Error in onExplanationStart callback:', e);
+        }
+      }
+
+      try {
+        var res = await explainElement(cap.element, overrides);
+        return { element: cap.element, eventType: cap.eventType, result: res };
+      } finally {
+        if (typeof overrides.onExplanationEnd === 'function') {
+          try {
+            overrides.onExplanationEnd();
+          } catch (e) {
+            console.error('[ElementInspector] Error in onExplanationEnd callback:', e);
+          }
+        }
+      }
     }
 
     root.ElementInspector = {
