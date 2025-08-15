@@ -15,6 +15,12 @@
   var pendingResolve = null;
   var pendingReject = null;
 
+  function resetPromiseState() {
+    pendingResolve = null;
+    pendingReject = null;
+    pendingPromise = null;
+  }
+
   function getEventTarget(event) {
     if (typeof event.composedPath === 'function') {
       var path = event.composedPath();
@@ -36,17 +42,11 @@
     clickHandler = function(event) {
       if (!isCapturing) return;
 
-      try {
-        event.preventDefault();
-      } catch (e) {}
-      try {
-        event.stopPropagation();
-      } catch (e) {}
-      try {
-        if (typeof event.stopImmediatePropagation === 'function') {
-          event.stopImmediatePropagation();
-        }
-      } catch (e) {}
+      event.preventDefault();
+      event.stopPropagation();
+      if (typeof event.stopImmediatePropagation === 'function') {
+        event.stopImmediatePropagation();
+      }
 
       var target = getEventTarget(event);
       lastCapturedElement = target || null;
@@ -61,23 +61,19 @@
       if (typeof pendingResolve === 'function') {
         pendingResolve({ element: lastCapturedElement, eventType: event.type });
       }
-      pendingResolve = null;
-      pendingReject = null;
-      pendingPromise = null;
+      resetPromiseState();
     };
 
     keydownHandler = function(event) {
       if (!isCapturing) return;
       var key = event.key || event.keyCode;
       if (key === 'Escape' || key === 'Esc' || key === 27) {
-        try { event.preventDefault(); } catch (e) {}
+        event.preventDefault();
         teardownListeners();
         if (typeof pendingReject === 'function') {
           pendingReject(new Error('Capture cancelled'));
         }
-        pendingResolve = null;
-        pendingReject = null;
-        pendingPromise = null;
+        resetPromiseState();
       }
     };
 
@@ -89,9 +85,9 @@
 
   function teardownListeners() {
     isCapturing = false;
-    try { window.removeEventListener('click', clickHandler, true); } catch (e) {}
-    try { window.removeEventListener('auxclick', clickHandler, true); } catch (e) {}
-    try { window.removeEventListener('keydown', keydownHandler, true); } catch (e) {}
+    window.removeEventListener('click', clickHandler, true);
+    window.removeEventListener('auxclick', clickHandler, true);
+    window.removeEventListener('keydown', keydownHandler, true);
     clickHandler = null;
     keydownHandler = null;
   }
@@ -118,9 +114,7 @@
     if (typeof pendingReject === 'function') {
       pendingReject(new Error('Capture stopped'));
     }
-    pendingResolve = null;
-    pendingReject = null;
-    pendingPromise = null;
+    resetPromiseState();
   }
 
   function getLastCapturedElement() {
