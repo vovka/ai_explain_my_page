@@ -1,97 +1,117 @@
-# ElementCapture (Vanilla JS)
+# Element Intelligence (Capture + Meaning)
 
-A zero-dependency drop-in script that lets you start a temporary "capture mode" on any web page to capture the next clicked element. It prevents the element's default behavior, logs it to the console, and resolves a Promise with the captured element.
+A zero-dependency drop-in script that lets you:
+- Capture a DOM element by entering a temporary "capture mode" and clicking an element.
+- Send compact context about that element, your app, and the page HTML to Gemini for a concise explanation of the element's meaning.
+
+It ships as a single file and exposes three globals for flexibility:
+- `ElementInspector` (recommended): high-level orchestrator for capture + explanation
+- `ElementCapture`: low-level capture utility
+- `ElementMeaning`: low-level Gemini client
 
 ## Install
 
-Include the scripts directly from your hosting (or GitHub raw). Example:
+Include the single script:
 
 ```html
-<script src="/element-capture.js"></script>
-<script src="/element-meaning.js"></script>
+<script src="/element-intelligence.js"></script>
 ```
 
-This exposes global `ElementCapture` and `ElementMeaning` objects.
+This exposes global `ElementInspector`, `ElementCapture`, and `ElementMeaning` objects.
 
-## Usage
+## Quick start
 
 ```html
 <button id="start-capture">Start capture</button>
+<button id="stop-capture">Stop capture</button>
 <script>
+  // Configure once at startup
+  ElementInspector.configure({
+    apiKey: '<YOUR_GEMINI_API_KEY>',
+    applicationDescription: 'A SaaS dashboard for managing subscriptions and invoices'
+  });
+
+  // Start capture and auto-explain the clicked element
   document.getElementById('start-capture').addEventListener('click', function() {
-    ElementCapture.start().then(async function(result) {
-      const element = result.element;
-
-      // Provide your app description, page HTML, and Gemini API key
-      const applicationDescription = 'A SaaS dashboard for managing subscriptions and invoices';
-      const pageHtml = document.documentElement.outerHTML;
-      const apiKey = '<YOUR_GEMINI_API_KEY>';
-
-      const response = await ElementMeaning.analyze({
-        apiKey,
-        applicationDescription,
-        pageHtml,
-        element,
-        // Optional overrides:
-        // model: 'gemini-2.5-flash-lite',
-        // generationConfig: { temperature: 0.2, maxOutputTokens: 256 },
-        // extraContext: { userRole: 'admin' }
-      });
-
-      if (!response.ok) {
-        console.warn('ElementMeaning error:', response.code, response.message || '');
-        if (response.code === ElementMeaning.errors.MISSING_API_KEY) {
-          alert('Missing API key. Please configure your Gemini API key.');
-        } else if (response.code === ElementMeaning.errors.INVALID_API_KEY) {
-          alert('Invalid API key. Please verify and try again.');
+    ElementInspector.captureAndExplain()
+      .then(function(out) {
+        console.log('Captured element:', out.element);
+        if (out.result && out.result.ok) {
+          console.log('[Explanation]', out.result.answerText);
         } else {
-          alert('Could not analyze element: ' + (response.message || response.code));
+          console.warn('Explanation failed:', out.result && (out.result.message || out.result.code));
         }
-        return;
-      }
+      })
+      .catch(function(err) {
+        console.warn('Capture or explanation error:', err && err.message);
+      });
+  });
 
-      console.log('Meaning:', response.answerText);
-      alert('Meaning: ' + response.answerText);
-    }).catch(function(err) {
-      console.warn('Capture was cancelled/stopped:', err.message);
-    });
+  // Stop capture programmatically
+  document.getElementById('stop-capture').addEventListener('click', function() {
+    ElementInspector.stop();
   });
 </script>
 ```
 
-- Press `Esc` to cancel.
+- Press `Esc` to cancel capture.
 - While active, the next click is intercepted with `preventDefault()` and `stopImmediatePropagation()`.
-- `ElementCapture.stop()` programmatically cancels capture.
+
+## Demo
+
+Open the included demo with your API key provided via URL parameter:
+
+```
+/demo.html?api_key=YOUR_GEMINI_API_KEY
+```
+
+The demo logs both the captured element and the explanation to the browser console.
 
 ## API
 
-### ElementCapture
+### ElementInspector (recommended)
+- `ElementInspector.configure(options): Defaults` — sets defaults and returns the current defaults snapshot
+  - `apiKey?: string` — Gemini API key
+  - `model?: string` — defaults to `gemini-2.5-flash-lite`
+  - `applicationDescription?: string` — high-level description of your app
+  - `generationConfig?: { temperature?: number, topP?: number, topK?: number, maxOutputTokens?: number }`
+  - `timeoutMs?: number` — default `DEFAULT_TIMEOUT_MS` (see constants)
+- `ElementInspector.captureOnce(): Promise<{ element: Element, eventType: string }>` — enters capture mode and resolves on next click
+- `ElementInspector.explainElement(element, overrides?): Promise<AnalyzeResult>` — runs explanation for a provided element
+- `ElementInspector.captureAndExplain(overrides?): Promise<{ element: Element, eventType: string, result: AnalyzeResult }>` — captures and explains in one call
+- `ElementInspector.stop(): void` — cancels an in-progress capture (delegates to `ElementCapture.stop()`)
+- `ElementInspector.defaults: Defaults` — current default configuration
+- `ElementInspector.version: string`
+
+Where `overrides` may include: `apiKey`, `model`, `applicationDescription`, `pageHtml`, `generationConfig`, `timeoutMs`, `extraContext`.
+
+### ElementCapture (low-level)
 - `ElementCapture.start(): Promise<{ element: Element, eventType: string }>`
 - `ElementCapture.stop(): void`
 - `ElementCapture.isCapturing(): boolean`
 - `ElementCapture.getLastCapturedElement(): Element | null`
 - `ElementCapture.version: string`
 
-### ElementMeaning
+### ElementMeaning (low-level)
 - `ElementMeaning.analyze(options): Promise<AnalyzeResult>`
   - **options**:
-    - `apiKey: string` (required) – Gemini API key
-    - `applicationDescription: string` (required) – high-level description of your app
-    - `pageHtml: string` (required) – full HTML content of the page
-    - `element?: Element` – DOM element to analyze (or provide `elementInfo`)
-    - `elementInfo?: object` – custom element context object if DOM is not available
-    - `extraContext?: object | string` – optional extra signals (e.g., user role)
-    - `model?: string` – defaults to `gemini-2.5-flash-lite`
+    - `apiKey: string` (required)
+    - `applicationDescription: string` (required)
+    - `pageHtml: string` (required)
+    - `element?: Element` — DOM element to analyze (or provide `elementInfo`)
+    - `elementInfo?: object` — custom element context if DOM is not available
+    - `extraContext?: object | string` — optional additional context
+    - `model?: string` — defaults to `gemini-2.5-flash-lite`
     - `generationConfig?: { temperature?: number, topP?: number, topK?: number, maxOutputTokens?: number }`
-    - `timeoutMs?: number` – default 30000
+    - `timeoutMs?: number` — default `DEFAULT_TIMEOUT_MS`
   - **AnalyzeResult**:
     - `ok: boolean`
-    - `answerText?: string` – present when `ok` is true
-    - `raw?: any` – raw Gemini response
+    - `answerText?: string` — present when `ok` is true
+    - `raw?: any` — raw Gemini response
     - `model?: string`
-    - `code?: string` – error code when `ok` is false
-    - `message?: string` – error message when `ok` is false
-    - `status?: number` – HTTP status when available
+    - `code?: string` — error code when `ok` is false
+    - `message?: string` — error message when `ok` is false
+    - `status?: number` — HTTP status when available
 
 ### Error codes
 - `MISSING_API_KEY`
@@ -104,9 +124,15 @@ This exposes global `ElementCapture` and `ElementMeaning` objects.
 - `NETWORK_ERROR`
 - `UNKNOWN`
 
+### Constants
+Available at `ElementMeaning.constants`:
+- `DEFAULT_MODEL`
+- `TEXT_CONTENT_LIMIT` — default `4000`
+- `OUTER_HTML_LIMIT` — default `100000`
+- `DEFAULT_TIMEOUT_MS` — default `30000`
+
 ## Notes
 
-- Works without bundlers or transpilers.
-- Uses capture-phase listeners to intercept early.
 - No visual highlighting is performed; only the clicked element is captured.
-- The element analyzer sends only text to the Gemini `generateContent` endpoint and requests a concise 2–4 sentence summary of the element's meaning in context.
+- Safety: the library does not override Google safety settings; the API's default, safer content filters are used by default.
+- Works without bundlers or transpilers.
