@@ -14,7 +14,7 @@
 </head>
 <body>
 	<h1>ElementCapture Demo</h1>
-	<p>Click the button to start capture mode, then click anywhere; the element will be logged in the console.</p>
+	<p>Click the button to start capture mode, then click anywhere; the element will be logged in the console. The explanation will also be logged if an API key is provided in the URL.</p>
 	<p><strong>Tip:</strong> Press Esc to cancel capture.</p>
 
 	<button id="start-capture">Start capture</button>
@@ -44,20 +44,61 @@
 		</div>
 	</div>
 
-	<script src="./element-capture.js"></script>
+	<script src="./element-intelligence.js"></script>
 	<script>
-		document.getElementById('start-capture').addEventListener('click', function() {
-			ElementCapture.start().then(function(result) {
-				console.log('Captured element:', result.element);
-				console.log('Event type:', result.eventType);
-			}).catch(function(err) {
-				console.warn('Capture cancelled or stopped:', err.message);
-			});
-		});
+		(function() {
+			function getParam(name) {
+				var params = new URLSearchParams(window.location.search);
+				return params.get(name);
+			}
 
-		document.getElementById('stop-capture').addEventListener('click', function() {
-			ElementCapture.stop();
-		});
+			function getApiKeyFromUrl() {
+				return getParam('api_key') || getParam('apikey') || getParam('apiKey') || getParam('key');
+			}
+
+			var apiKey = getApiKeyFromUrl();
+			var appDescription = 'Demo shop: product cards, links, forms, and interactive controls to test element capture.';
+
+			if (window.ElementInspector && typeof window.ElementInspector.configure === 'function') {
+				window.ElementInspector.configure({ apiKey: apiKey || '', applicationDescription: appDescription });
+			}
+
+			document.getElementById('start-capture').addEventListener('click', function() {
+				if (!window.ElementInspector) {
+					console.warn('ElementInspector not available');
+					return;
+				}
+				var hasKey = typeof apiKey === 'string' && apiKey.trim() !== '';
+				if (!hasKey) {
+					console.warn('No API key provided in URL. Only capturing element without explanation. Add ?api_key=YOUR_KEY to the URL.');
+					window.ElementInspector.captureOnce().then(function(result) {
+						console.log('Captured element:', result.element);
+						console.log('Event type:', result.eventType);
+					}).catch(function(err) {
+						console.warn('Capture cancelled or stopped:', err && err.message);
+					});
+					return;
+				}
+
+				window.ElementInspector.captureAndExplain().then(function(out) {
+					console.log('Captured element:', out.element);
+					console.log('Event type:', out.eventType);
+					if (out.result && out.result.ok) {
+						console.log('[Explanation]', out.result.answerText);
+					} else {
+						console.warn('Explanation failed:', out.result && (out.result.message || out.result.code));
+					}
+				}).catch(function(err) {
+					console.warn('Capture or explanation error:', err && err.message);
+				});
+			});
+
+			document.getElementById('stop-capture').addEventListener('click', function() {
+				if (window.ElementInspector && typeof window.ElementInspector.stop === 'function') {
+					window.ElementInspector.stop();
+				}
+			});
+		})();
 	</script>
 </body>
 </html>
