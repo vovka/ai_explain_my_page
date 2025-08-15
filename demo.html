@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>ElementCapture Demo</title>
+	<style>
+		body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; line-height: 1.5; padding: 24px; }
+		button { padding: 8px 12px; font-size: 14px; }
+		.grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+		.card { border: 1px solid #ddd; padding: 12px; border-radius: 6px; }
+		.card a { color: #0a58ca; text-decoration: underline; }
+	</style>
+</head>
+<body>
+	<h1>ElementCapture Demo</h1>
+	<p>Click the button to start capture mode, then click anywhere; the element will be logged in the console.</p>
+	<p><strong>Tip:</strong> Press Esc to cancel capture.</p>
+
+	<button id="start-capture">Start capture</button>
+	<button id="stop-capture">Stop capture</button>
+
+	<div class="grid">
+		<div class="card">
+			<h3>Card One</h3>
+			<p>This is a <a href="#card1">link</a> inside a card.</p>
+			<button>Card button</button>
+		</div>
+		<div class="card">
+			<h3>Card Two</h3>
+			<p>Another <a href="#card2">example link</a> to test default prevention.</p>
+			<form action="#submit" onsubmit="console.log('form submitted (should be prevented in capture)'); return true;">
+				<input placeholder="Type here" />
+				<button type="submit">Submit</button>
+			</form>
+		</div>
+		<div class="card">
+			<h3>Card Three</h3>
+			<label><input type="checkbox" /> Check me</label>
+			<select>
+				<option>One</option>
+				<option>Two</option>
+			</select>
+		</div>
+	</div>
+
+	<script src="./element-capture.js"></script>
+	<script>
+		document.getElementById('start-capture').addEventListener('click', function() {
+			ElementCapture.start().then(function(result) {
+				console.log('Captured element:', result.element);
+				console.log('Event type:', result.eventType);
+			}).catch(function(err) {
+				console.warn('Capture cancelled or stopped:', err.message);
+			});
+		});
+
+		document.getElementById('stop-capture').addEventListener('click', function() {
+			ElementCapture.stop();
+		});
+	</script>
+</body>
+</html>
