@@ -1,5 +1,7 @@
 # Element Intelligence (Capture + Meaning)
 
+![Demo](https://github.com/vovka/ai_explain_my_page/blob/42724b7fa4eadfe674ca92d7610917774926e8ff/ai-explain-my-webpage-demo.gif)
+
 A zero-dependency drop-in script that lets you:
 - Capture a DOM element by entering a temporary "capture mode" and clicking an element.
 - Send compact context about that element, your app, and the page HTML to Gemini for a concise explanation of the element's meaning.
