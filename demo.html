@@ -94,8 +94,8 @@
 			});
 
 			document.getElementById('stop-capture').addEventListener('click', function() {
-				if (window.ElementCapture) {
-					window.ElementCapture.stop();
+				if (window.ElementInspector && typeof window.ElementInspector.stop === 'function') {
+					window.ElementInspector.stop();
 				}
 			});
 		})();

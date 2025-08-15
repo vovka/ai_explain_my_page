@@ -505,6 +505,11 @@
       captureOnce: captureOnce,
       explainElement: explainElement,
       captureAndExplain: captureAndExplain,
+      stop: function() {
+        if (root.ElementCapture && typeof root.ElementCapture.stop === 'function') {
+          root.ElementCapture.stop();
+        }
+      },
       defaults: defaults,
       version: '0.1.0'
     };
