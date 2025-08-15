@@ -80,7 +80,7 @@
 					return;
 				}
 
-				window.ElementInspector.captureAndExplain({ applicationDescription: appDescription }).then(function(out) {
+				window.ElementInspector.captureAndExplain().then(function(out) {
 					console.log('Captured element:', out.element);
 					console.log('Event type:', out.eventType);
 					if (out.result && out.result.ok) {
